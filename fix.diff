@@ -1,0 +1,26 @@
+<<<<<<< SEARCH
+                # Split the long paragraph by lines first
+                lines = para.split('\n')
+                for line in lines:
+                    if len(line) > current_max_size:
+                        # Extreme extreme boundary: a single line exceeds max chunk size
+                        # Force split by characters
+                        for char_idx in range(0, len(line), current_max_size):
+                            chunks.append(line[char_idx:char_idx + current_max_size])
+                    else:
+=======
+                # Split the long paragraph by lines first
+                lines = para.split('\n')
+                for line in lines:
+                    if len(line) > current_max_size:
+                        # Flush current_chunk before adding broken lines to preserve order
+                        if current_chunk:
+                            chunks.append(current_chunk.strip())
+                            current_chunk = ""
+
+                        # Extreme extreme boundary: a single line exceeds max chunk size
+                        # Force split by characters
+                        for char_idx in range(0, len(line), current_max_size):
+                            chunks.append(line[char_idx:char_idx + current_max_size])
+                    else:
+>>>>>>> REPLACE
