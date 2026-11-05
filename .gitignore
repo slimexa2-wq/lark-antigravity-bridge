@@ -28,3 +28,4 @@ private-backup/
 
 __pycache__/
 *.pyc
+.coverage
