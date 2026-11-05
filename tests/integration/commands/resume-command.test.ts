@@ -327,7 +327,7 @@ async function createHarness(
   const dispatchResumeArg = (arg: string): Promise<void> =>
     handleCardAction({
       channel: channel as unknown as Parameters<typeof handleCardAction>[0]['channel'],
-      evt: cardEvent({ cmd: 'resume.use', arg }),
+      evt: cardEvent({ cmd: 'resume.use', arg }, Math.random().toString()),
       sessions,
       sessionCatalog: catalog,
       workspaces,
@@ -432,11 +432,11 @@ function message(content: string): NormalizedMessage {
   } as unknown as NormalizedMessage;
 }
 
-function cardEvent(value: Record<string, unknown>): CardActionEvent {
+function cardEvent(value: Record<string, unknown>, messageId = 'om-card'): CardActionEvent {
   return {
     action: { value },
     chatId: 'chat-1',
-    messageId: 'om-card',
+    messageId,
     operator: {
       openId: 'ou-user',
       name: 'User',
