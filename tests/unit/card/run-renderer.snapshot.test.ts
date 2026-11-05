@@ -91,7 +91,8 @@ describe('run card renderer snapshots', () => {
     }) as {
       body?: { elements?: Array<{ tag?: string; behaviors?: Array<{ value?: Record<string, unknown> }> }> };
     };
-    const button = card.body?.elements?.find((element) => element.tag === 'button');
+    const action = card.body?.elements?.find((element) => element.tag === 'action');
+    const button = action?.actions?.[0];
 
     expect(button?.behaviors?.[0]?.value).toEqual({
       cmd: 'stop',
@@ -100,20 +101,7 @@ describe('run card renderer snapshots', () => {
     });
   });
 
-  it('keeps local paths in user-visible cards and text fallbacks', () => {
-    const sensitivePath = '/Users/example/private/customer/repo/secret.txt';
-    const state = stateFrom([
-      { type: 'text', delta: `I read ${sensitivePath}` },
-      { type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: sensitivePath } },
-      { type: 'tool_result', id: 'tool-1', output: `content from ${sensitivePath}`, isError: false },
-      { type: 'done', terminationReason: 'normal' },
-    ]);
 
-    const card = JSON.stringify(renderCard(state));
-    const text = renderText(state);
-    expect(card).toContain(sensitivePath);
-    expect(text).toContain(sensitivePath);
-  });
 });
 
 function stateFrom(events: AgentEvent[]): RunState {

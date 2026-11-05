@@ -25,9 +25,7 @@ export interface RunCardRenderOptions {
 }
 
 export function renderCard(state: RunState, options: RunCardRenderOptions = {}): object {
-  if (options.richCard) {
-    return renderRichCard(state, options);
-  }
+  return renderRichCard(state, options);
   const elements: object[] = [];
 
   if (state.reasoning.content) {
@@ -58,7 +56,9 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
 
   if (state.terminal === 'running') {
     if (state.footer) elements.push(footerStatus(state.footer));
-    elements.push(stopButton(options));
+    elements.push({ tag: 'action', actions: [stopButton(options)] });
+  } else if (state.terminal === 'done') {
+    elements.push(undoButton(options));
   }
 
   // Mask raw emails across every text field so the Feishu tenant audit doesn't
@@ -642,78 +642,34 @@ function markdownToCardElements(rawText: string): object[] {
   return blocks;
 }
 
-function extractDecisionOptions(text: string): Array<{ index: number; label: string }> {
-  const str = String(text || '');
-  const cueMatch = str.match(/(?:待答复|待拍板|待确认|请确认|请拍板|请选择|请决定|要我现在就按哪个方案)/);
-  if (!cueMatch || cueMatch.index === undefined) return [];
-  const searchRegion = str.slice(cueMatch.index);
-  const options: Array<{ index: number; label: string }> = [];
-  for (const m of searchRegion.matchAll(
-    /^(?:\s*[-*]\s*(?:(\d+)[.、)]\s*)?|\s*(\d+)[.、)]\s*|\s*([①②③④⑤⑥])\s*)([^\n]{2,60})$/gm,
-  )) {
-    const line = (m[4] ?? '').trim();
-    if (line.startsWith('**结论') || line.startsWith('产物') || line.startsWith('文件')) continue;
-    if (m[1] || m[2] || m[3] || options.length < 4) {
-      options.push({
-        index: options.length + 1,
-        label: line.replace(/\*\*/g, '').replace(/`/g, '').slice(0, 40),
-      });
-    }
-    if (options.length >= 4) break;
+function undoButton(options: RunCardRenderOptions): object {
+  const value: Record<string, unknown> = { cmd: 'undo' };
+  if (options.signCallback) {
+    value.__bridge_cb = true;
+    value.bridge_token = options.signCallback('undo');
   }
-  return options.length >= 2 ? options : [];
-}
-
-function buildDecisionElements(options: Array<{ index: number; label: string }>): object[] {
-  if (!Array.isArray(options) || options.length === 0) return [];
-  const buttons = options.map((opt, idx) => ({
-    tag: 'button',
-    text: {
-      tag: 'plain_text',
-      content: `${idx === 0 ? '✅ ' : ''}${opt.index}. ${opt.label.slice(0, 22)}`,
-    },
-    type: idx === 0 ? 'primary' : 'default',
-    behaviors: [
+  return {
+    tag: 'action',
+    actions: [
       {
-        type: 'callback',
-        value: {
-          action: 'choose_option',
-          index: opt.index,
-          replyText: opt.label,
-        },
-      },
-    ],
-  }));
-  return [
-    { tag: 'hr' },
-    {
-      tag: 'markdown',
-      content: '**⚡ 交互决策（直接点击按钮即可下达指令，或直接回复序号）**',
-    },
-    {
-      tag: 'column_set',
-      flex_mode: 'none',
-      horizontal_spacing: 'small',
-      columns: buttons.map((btn) => ({
-        tag: 'column',
-        width: 'auto',
-        elements: [btn],
-      })),
-    },
-  ];
+        tag: 'button',
+        text: { tag: 'plain_text', content: '↩️ 一键撤回' },
+        type: 'default',
+        behaviors: [{ type: 'callback', value }],
+      }
+    ]
+  };
 }
 
 function renderRichCard(state: RunState, options: RunCardRenderOptions): object {
   const botName = options.botName || '哈基米2.0';
   const elements: object[] = [];
 
-  // 1. 顶部可折叠思考与工具执行过程面板（流式时展开，完成后自动收起）
   const thinkingPanel = buildRichThinkingAndToolsPanel(state);
   if (thinkingPanel) {
     elements.push(thinkingPanel);
   }
 
-  // 2. 收集全部正文内容
   const textPieces: string[] = [];
   for (const b of state.blocks) {
     if (b.kind === 'text' && b.content.trim()) {
@@ -725,7 +681,6 @@ function renderRichCard(state: RunState, options: RunCardRenderOptions): object 
   }
   const fullText = textPieces.join('\n\n');
 
-  // 3. 完成态下自动提取 KPI 指标卡
   if (state.terminal === 'done' && fullText) {
     const kpis = extractKpiMetrics(fullText);
     if (kpis.length >= 2) {
@@ -733,14 +688,10 @@ function renderRichCard(state: RunState, options: RunCardRenderOptions): object 
     }
   }
 
-  // 4. 渲染结构化正文与原生分栏表格
   if (fullText) {
     const displayMd = state.terminal === 'running' ? `${fullText} ▍` : fullText;
     elements.push(...markdownToCardElements(displayMd));
   }
-
-  // 5. 异常/中断/运行中状态与底部交互按钮
-  const decisionOptions = state.terminal === 'done' ? extractDecisionOptions(fullText) : [];
 
   if (state.terminal === 'interrupted') {
     elements.push(noteMd('_⏹ 任务已被手动终止_'));
@@ -756,9 +707,9 @@ function renderRichCard(state: RunState, options: RunCardRenderOptions): object 
 
   if (state.terminal === 'running') {
     if (state.footer) elements.push(footerStatus(state.footer));
-    elements.push(stopButton(options));
-  } else if (decisionOptions.length > 0) {
-    elements.push(...buildDecisionElements(decisionOptions));
+    elements.push({ tag: 'action', actions: [stopButton(options)] });
+  } else if (state.terminal === 'done') {
+    elements.push(undoButton(options));
   }
 
   let headerTemplate = 'wathet';
@@ -770,9 +721,6 @@ function renderRichCard(state: RunState, options: RunCardRenderOptions): object 
   ) {
     headerTemplate = 'red';
     headerTitle = `⚠️ ${botName} · 执行异常提示`;
-  } else if (decisionOptions.length > 0) {
-    headerTemplate = 'orange';
-    headerTitle = `⚡ ${botName} · 待您拍板决策`;
   } else if (state.terminal === 'done') {
     headerTemplate = 'turquoise';
     headerTitle = `📊 ${botName} · 执行简报`;

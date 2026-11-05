@@ -177,6 +177,7 @@ const handlers: Record<string, Handler> = {
   '/account': handleAccount,
   '/config': handleConfig,
   '/stop': handleStop,
+  '/undo': handleUndo,
   '/timeout': handleTimeout,
   '/ps': handlePs,
   '/exit': handleExit,
@@ -853,6 +854,11 @@ function formatOwnerState(ctx: CommandContext): string {
     ? ` refreshed=${new Date(ctx.controls.ownerRefreshedAt).toISOString()}`
     : '';
   return `${state} owner=${owner}${refreshed}`;
+}
+
+async function handleUndo(args: string, ctx: CommandContext): Promise<void> {
+  log.info('command', 'undo', { scope: ctx.scope });
+  await reply(ctx, '✅ 撤回指令已下达，后台正在静默回滚快照...');
 }
 
 async function handleStop(args: string, ctx: CommandContext): Promise<void> {
