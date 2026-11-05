@@ -2,6 +2,7 @@ import { basename } from 'node:path';
 import { deepMaskEmails } from './mask-email';
 import type { Block, FooterStatus, RunState, ToolEntry } from './run-state';
 import { toolBodyMd, toolHeaderText } from './tool-render';
+import { IncrementalMarkdownAndJsonRepair } from '../utils/incremental-sanitizer';
 
 const REASONING_MAX = 1500;
 const COLLAPSE_TOOL_THRESHOLD = 3;
@@ -586,7 +587,8 @@ function buildKpiElements(kpis: Array<{ label: string; value: string }>): object
 }
 
 function markdownToCardElements(rawText: string): object[] {
-  const lines = String(rawText || '')
+  const sanitizedText = IncrementalMarkdownAndJsonRepair.sanitizeMarkdown(rawText);
+  const lines = String(sanitizedText || '')
     .replace(/\r\n/g, '\n')
     .split('\n');
   const blocks: object[] = [];
