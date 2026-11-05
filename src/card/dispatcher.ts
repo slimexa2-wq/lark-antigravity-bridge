@@ -24,6 +24,10 @@ import { lookupMessageThreadId } from '../bot/thread-id';
 const BRIDGE_CALLBACK_MARKER = '__bridge_cb';
 const LEGACY_CLAUDE_CALLBACK_MARKER = '__claude_cb';
 
+// A simple in-memory cache to debounce identical card actions from the same operator within a short time window.
+const recentClicks = new Map<string, number>();
+const CLICK_DEBOUNCE_MS = 2000;
+
 export interface CardDispatchDeps {
   channel: LarkChannel;
   evt: CardActionEvent;
@@ -49,6 +53,28 @@ export async function handleCardAction(deps: CardDispatchDeps): Promise<void> {
 
   const operatorId = deps.evt.operator.openId;
   const chatId = deps.evt.chatId;
+
+  // Debounce check
+  const cmdStr = String(payload.cmd || payload.action || '');
+  if (cmdStr) {
+    const clickKey = `${operatorId}:${deps.evt.messageId}:${cmdStr}`;
+    const now = Date.now();
+    const lastClick = recentClicks.get(clickKey) || 0;
+    if (now - lastClick < CLICK_DEBOUNCE_MS) {
+      log.info('cardAction', 'debounce-drop', { clickKey });
+      return;
+    }
+    recentClicks.set(clickKey, now);
+
+    // Prune old entries to prevent memory leak
+    if (recentClicks.size > 1000) {
+      for (const [k, v] of recentClicks.entries()) {
+        if (now - v > CLICK_DEBOUNCE_MS * 2) {
+          recentClicks.delete(k);
+        }
+      }
+    }
+  }
 
   // CardKit 2.0 form submits drop user-input values from action.value; they
   // arrive on raw.action.form_value. The SDK forwards the raw event when

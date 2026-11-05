@@ -1,0 +1,23 @@
+--- tests/integration/commands/resume-command.test.ts
++++ tests/integration/commands/resume-command.test.ts
+@@ -326,7 +326,7 @@
+
+   const dispatchResumeArg = (arg: string): Promise<void> =>
+     handleCardAction({
+       channel: channel as unknown as Parameters<typeof handleCardAction>[0]['channel'],
+-      evt: cardEvent({ cmd: 'resume.use', arg }),
++      evt: cardEvent({ cmd: 'resume.use', arg }, Math.random().toString()),
+       sessions,
+       sessionCatalog: catalog,
+@@ -433,10 +433,10 @@
+   } as unknown as NormalizedMessage;
+ }
+
+-function cardEvent(value: Record<string, unknown>): CardActionEvent {
++function cardEvent(value: Record<string, unknown>, messageId = 'om-card'): CardActionEvent {
+   return {
+     action: { value },
+     chatId: 'chat-1',
+-    messageId: 'om-card',
++    messageId,
+     operator: {

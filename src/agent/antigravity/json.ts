@@ -155,9 +155,17 @@ export function translateAntigravityStreamLine(
         const output =
           typeof step.tool_info?.output === 'string'
             ? step.tool_info.output
-            : typeof errMsg === 'string'
-              ? errMsg
-              : '';
+            : typeof step.tool_info?.output === 'object' && step.tool_info.output !== null
+              ? (() => {
+                  try {
+                    return JSON.stringify(step.tool_info.output);
+                  } catch {
+                    return '';
+                  }
+                })()
+              : typeof errMsg === 'string'
+                ? errMsg
+                : '';
         const isError = step.state !== 'DONE' || Boolean(step.tool_info?.error);
         events.push({
           type: 'tool_result',

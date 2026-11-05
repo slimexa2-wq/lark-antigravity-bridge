@@ -50,6 +50,7 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
     elements.push(noteMd(`_⏱ ${mins} 分钟无响应,已自动终止_`));
   } else if (state.terminal === 'error' && state.errorMsg) {
     elements.push(noteMd(`⚠️ agent 失败：${state.errorMsg}`));
+    elements.push(reconnectButton(options));
   } else if (state.terminal === 'done' && elements.length === 0) {
     elements.push(noteMd('_（未返回内容）_'));
   }
@@ -64,6 +65,7 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
   return deepMaskEmails({
     schema: '2.0',
     config: {
+      update_multi: true,
       streaming_mode: state.terminal === 'running',
       summary: { content: summaryText(state) },
     },
@@ -197,6 +199,20 @@ function stopButton(options: RunCardRenderOptions): object {
     tag: 'button',
     text: { tag: 'plain_text', content: '⏹ 终止' },
     type: 'danger',
+    behaviors: [{ type: 'callback', value }],
+  };
+}
+
+function reconnectButton(options: RunCardRenderOptions): object {
+  const value: Record<string, unknown> = { cmd: 'reconnect' };
+  if (options.signCallback) {
+    value.__bridge_cb = true;
+    value.bridge_token = options.signCallback('reconnect');
+  }
+  return {
+    tag: 'button',
+    text: { tag: 'plain_text', content: '🔄 异常重连' },
+    type: 'primary',
     behaviors: [{ type: 'callback', value }],
   };
 }
@@ -731,6 +747,7 @@ function renderRichCard(state: RunState, options: RunCardRenderOptions): object 
     elements.push(noteMd(`_⏱ ${mins} 分钟无响应，已自动终止_`));
   } else if (state.terminal === 'error' && state.errorMsg) {
     elements.push(noteMd(`⚠️ **执行异常**：${state.errorMsg}`));
+    elements.push(reconnectButton(options));
   } else if (state.terminal === 'done' && !fullText) {
     elements.push(noteMd('_（已完成处理）_'));
   }
