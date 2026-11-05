@@ -856,7 +856,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
                   const card = {
                     config: { wide_screen_mode: true },
                     header: {
-                      template: (routeResult.taskType as string) === 'Unknown' ? 'red' : 'blue',
+                      template: routeResult.taskType === 'Unknown' as any ? 'red' : 'blue',
                       title: { content: '📁 附件智能派发结果', tag: 'plain_text' }
                     },
                     elements: [
