@@ -25,3 +25,6 @@ tests-smoke/
 
 # Personal local backup — never commit
 private-backup/
+
+__pycache__/
+*.pyc
