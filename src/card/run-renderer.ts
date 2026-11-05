@@ -25,53 +25,8 @@ export interface RunCardRenderOptions {
 
 export function renderCard(state: RunState, options: RunCardRenderOptions = {}): object {
   return renderRichCard(state, options);
-  const elements: object[] = [];
-
-  if (state.reasoning.content) {
-    elements.push(reasoningPanel(state.reasoning.content, state.reasoning.active));
-  }
-
-  for (const group of groupBlocks(state.blocks)) {
-    if (group.kind === 'text') {
-      if (group.content.trim()) {
-        elements.push(markdown(group.content));
-      }
-    } else {
-      elements.push(...renderToolGroup(group.tools, state.terminal !== 'running'));
-    }
-  }
-
-  if (state.terminal === 'interrupted') {
-    elements.push(noteMd('_⏹ 已被中断_'));
-  } else if (state.terminal === 'idle_timeout') {
-    const mins = state.idleTimeoutMinutes ?? 0;
-    elements.push(noteMd(`_⏱ ${mins} 分钟无响应,已自动终止_`));
-  } else if (state.terminal === 'error' && state.errorMsg) {
-    elements.push(noteMd(`⚠️ agent 失败：${state.errorMsg}`));
-  } else if (state.terminal === 'done' && elements.length === 0) {
-    elements.push(noteMd('_（未返回内容）_'));
-  }
-
-  if (state.terminal === 'running') {
-    if (state.footer) elements.push(footerStatus(state.footer));
-    elements.push({ tag: 'action', actions: [stopButton(options)] });
-  } else if (state.terminal === 'done') {
-    elements.push(undoButton(options));
-  }
-
-  // Mask raw emails across every text field so the Feishu tenant audit doesn't
-  // reject the (streamed) card with a 400 EMAIL_ADDRESS — see mask-email.ts.
-  return deepMaskEmails({
-    schema: '2.0',
-    config: {
-      streaming_mode: state.terminal === 'running',
-      summary: { content: summaryText(state) },
-    },
-    body: { elements },
-  });
 }
-
-function* groupBlocks(blocks: Block[]): Generator<Group> {
+  function* groupBlocks(blocks: Block[]): Generator<Group> {
   let toolBuf: ToolEntry[] = [];
   for (const b of blocks) {
     if (b.kind === 'tool') {
