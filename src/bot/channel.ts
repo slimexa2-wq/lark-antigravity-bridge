@@ -46,6 +46,7 @@ import {
   toPromptAttachment,
 } from '../media/attachment';
 import { canUseDm, canUseGroup, requireMentionForChat } from '../policy/access';
+import { AttachmentRouter } from '../media/router/attachment-router';
 import { MeetingManager } from '../meeting/manager';
 import type { VcRequestClient } from '../meeting/api';
 import { attachMeetingAgent, summarizeEndedMeeting } from '../meeting/orchestrator';
@@ -833,6 +834,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
     m.resources.map((r) => ({ messageId: m.messageId, resource: r })),
   );
   const attachments = await media.resolve(resourceItems, controls.profileConfig.attachments);
+
   if (attachments.length > 0) {
     log.info('media', 'resolved', { count: attachments.length });
     for (const attachment of attachments) {
@@ -844,6 +846,33 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
         sourceMessageId: attachment.sourceMessageId,
         reason: attachment.rejectionReason,
       });
+
+      // Auto-route attachments
+      if (attachment.decision === 'accepted') {
+          const routeResult = await AttachmentRouter.route(attachment);
+          if (routeResult.taskType !== 'Unknown') {
+              try {
+
+                  const card = {
+                    config: { wide_screen_mode: true },
+                    header: {
+                      template: routeResult.taskType === 'Unknown' ? 'red' : 'blue',
+                      title: { content: '📁 附件智能派发结果', tag: 'plain_text' }
+                    },
+                    elements: [
+                      {
+                        tag: 'markdown',
+                        content: `**文件：** ${attachment.originalName || attachment.path}\n**路由结果：** ${routeResult.message}`
+                      }
+                    ]
+                  };
+                  await deps.channel.send(firstMsg.chatId, { card }, { replyTo: firstMsg.messageId });
+
+              } catch (e) {
+                  log.error('attachment-router', 'failed to reply', e);
+              }
+          }
+      }
     }
   }
 
