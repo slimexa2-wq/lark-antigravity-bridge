@@ -1,3 +1,8 @@
+> 🚨 **最高统帅原则（效率第一 · 后台复杂 · 前端极简 · 严禁过度安全）**：
+> 1. **严禁过度安全恶心用户**：砍掉一切冗余的二次确认令牌、繁琐弹窗拦截、机械必填报错与人为卡点；常规操作采用“一键直达 + 后台自动快照备份 + 随时可撤回”。
+> 2. **后台复杂、前端极简**：所有格式兼容、脏数据清洗、漏填状态补齐、四方公式核对、跨表勾稽全部封装在后台自动完成；前端交互必须做到傻瓜式直观（1 步输入/拖入 → 1 键出定稿结果），便捷所有使用者！
+> 3. **Top 50 开源标杆融合**：详见同目录 `docs/TOP50_OPEN_SOURCE_FUSION.md`。
+
 # 飞书 × Antigravity 多 Agent 实时流式桥接器深度调研与演进蓝图（四源对标版）
 
 > **调研基线**：本蓝图综合 **① 本公司飞书移动办公与多 Agent 远程操控场景**、**② 标杆产品（飞书智能伙伴 CardKit v2 / Vercel Chat SDK / Linear Slack Agent）**、**③ 优秀开源项目（`larksuite/lark-openapi-mcp` / `agent-to-feishu` / LangGraph HITL）** 与 **④ 人机协同有界自治论文（Bounded Autonomy & Human-in-the-Loop Agentic Systems）**，指导 `lark-antigravity-bridge` 的核心功能完善。
