@@ -856,7 +856,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
                   const card = {
                     config: { wide_screen_mode: true },
                     header: {
-                      template: routeResult.taskType === 'Unknown' ? 'red' : 'blue',
+                      template: (routeResult.taskType as string) === 'Unknown' ? 'red' : 'blue',
                       title: { content: '📁 附件智能派发结果', tag: 'plain_text' }
                     },
                     elements: [
@@ -869,7 +869,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
                   await deps.channel.send(firstMsg.chatId, { card }, { replyTo: firstMsg.messageId });
 
               } catch (e) {
-                  log.error('attachment-router', 'failed to reply', e);
+                  log.fail('attachment-router', e);
               }
           }
       }
