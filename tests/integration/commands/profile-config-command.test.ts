@@ -208,11 +208,14 @@ describe('profile-aware account and config commands', () => {
     vi.useFakeTimers();
     const h = await createHarness();
 
-    await h.command('/account submit', {
+    const p = h.command('/account submit', {
       app_id: 'cli_new',
       app_secret: 'new-secret',
       tenant: 'lark',
     });
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(1500);
+    await p;
 
     const root = await waitForRoot(h.rootDir, (candidate) =>
       candidate.profiles.claude?.accounts.app.id === 'cli_new',
