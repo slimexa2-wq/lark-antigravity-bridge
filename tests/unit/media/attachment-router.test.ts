@@ -76,7 +76,7 @@ describe('AttachmentRouter', async () => {
     });
 
     (xlsx.utils.decode_range as any).mockReturnValue({s:{c:0, r:0}, e:{c:2, r:0}});
-    (xlsx.utils.encode_cell as any).mockImplementation(({c, r}) => {
+    (xlsx.utils.encode_cell as any).mockImplementation(( {c, r}: {c: number, r: number} ) => {
         if(c === 0 && r === 0) return 'A1';
         if(c === 1 && r === 0) return 'B1';
         if(c === 2 && r === 0) return 'C1';

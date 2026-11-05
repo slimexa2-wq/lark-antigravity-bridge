@@ -34,7 +34,7 @@ export class AttachmentRouter {
         const buffer = await fsPromises.readFile(attachment.path);
         const workbook = xlsx.read(buffer, { type: 'buffer' });
         const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
+        const worksheet = workbook.Sheets[firstSheetName!]!;
 
         // Read headers (first row)
         const headers: string[] = [];
