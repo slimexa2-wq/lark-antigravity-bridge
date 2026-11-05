@@ -34,10 +34,11 @@ export class AttachmentRouter {
         const buffer = await fsPromises.readFile(attachment.path);
         const workbook = xlsx.read(buffer, { type: 'buffer' });
         const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
+        const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
 
         // Read headers (first row)
         const headers: string[] = [];
+        if (!worksheet) return { taskType: 'Unknown', message: '未知文件类型，请手动选择处理方式。' };
         const ref = worksheet['!ref'];
         if (ref) {
             const range = xlsx.utils.decode_range(ref);
