@@ -34,7 +34,19 @@ export class AttachmentRouter {
         const buffer = await fsPromises.readFile(attachment.path);
         const workbook = xlsx.read(buffer, { type: 'buffer' });
         const firstSheetName = workbook.SheetNames[0];
+        if (!firstSheetName) {
+            return {
+                taskType: 'Unknown',
+                message: '无法识别的文件类型。'
+            };
+        }
         const worksheet = workbook.Sheets[firstSheetName];
+        if (!worksheet) {
+            return {
+                taskType: 'Unknown',
+                message: '无法识别的文件类型。'
+            };
+        }
 
         // Read headers (first row)
         const headers: string[] = [];
