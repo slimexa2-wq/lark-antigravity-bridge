@@ -101,9 +101,10 @@ export class AdaptiveStreamThrottler<T> {
       this.isFirstPacket = false;
       this.isInFlight = false;
 
-      if (this.nextFrame) {
+      const next = this.nextFrame as typeof frame | null;
+      if (next) {
         // If a flush was requested or this is the final frame, send it immediately
-        const delay = (this.resolveFlush.length > 0 || this.nextFrame.flushNow || this.nextFrame.isFinal) ? 0 : this.coalesceWindowMs;
+        const delay = (this.resolveFlush.length > 0 || next.flushNow || next.isFinal) ? 0 : this.coalesceWindowMs;
         this.scheduleSend(delay);
       } else {
         this.resolveFlushPromises();
@@ -111,10 +112,11 @@ export class AdaptiveStreamThrottler<T> {
     } catch (err: any) {
       const isRateLimit = err?.response?.status === 429 || err?.status === 429 || err?.code === 429 || (err.message && err.message.includes('429'));
 
+      const nextErr = this.nextFrame as typeof frame | null;
       if (isRateLimit && retries < this.maxRetries) {
         log.warn('adaptive-throttler', 'Rate limited, retrying', { retries, seq: frame.seq });
 
-        if (!this.nextFrame || frame.seq > this.nextFrame.seq) {
+        if (!nextErr || frame.seq > nextErr.seq) {
             this.nextFrame = frame;
         }
 
@@ -127,11 +129,11 @@ export class AdaptiveStreamThrottler<T> {
         }, backoffMs);
 
       } else {
-        log.error('adaptive-throttler', 'Failed to send frame', { err, seq: frame.seq, retries });
+        log.fail('adaptive-throttler', err, { seq: frame.seq, retries });
         this.isInFlight = false;
 
-        if (this.nextFrame) {
-          const delay = (this.resolveFlush.length > 0 || this.nextFrame.flushNow || this.nextFrame.isFinal) ? 0 : this.coalesceWindowMs;
+        if (nextErr) {
+          const delay = (this.resolveFlush.length > 0 || nextErr.flushNow || nextErr.isFinal) ? 0 : this.coalesceWindowMs;
           this.scheduleSend(delay);
         } else {
           this.resolveFlushPromises();
