@@ -1,92 +1,94 @@
 import unittest
 import math
-from ultra_modules.slash_command_quick_menu_export_formatter import format_export, clean_value
+from ultra_modules.slash_command_quick_menu_export_formatter import process_slash_command, sanitize_value
 
 class TestSlashCommandQuickMenuExportFormatter(unittest.TestCase):
-    def test_normal_input(self):
-        # 1. Normal input test case
-        data = {
-            'command': '/周报',
-            'value': 100.5,
-            'count': 5,
-            'other_metric': '200'
-        }
-        result = format_export(data)
-        self.assertEqual(result['command'], '/周报')
-        self.assertEqual(result['value'], 100.5)
-        self.assertEqual(result['count'], 5)
-        self.assertEqual(result['other_metric'], 200.0)
-        self.assertEqual(result['comments'], 0)
-        expected_summary = "指令: /周报\n核心数据: 100.5\n数量: 5"
-        self.assertEqual(result['summary'], expected_summary)
+
+    def test_normal_commands(self):
+        # /周报
+        result = process_slash_command("/周报", {"完成任务数": 5, "待办任务数": 2, "风险项": 0})
+        self.assertEqual(result["export_data"], {"完成任务数": 5, "待办任务数": 2, "风险项": 0, "comments": 0})
+        self.assertEqual(result["report_text"], "【周报汇报】\n完成任务数: 5\n待办任务数: 2")
+
+        # /提成
+        result = process_slash_command("/提成", {"销售额": 1000.5, "提成比例": 0.1, "预计发放": 100.05})
+        self.assertEqual(result["export_data"], {"销售额": 1000.5, "提成比例": 0.1, "预计发放": 100.05, "comments": 0})
+        self.assertEqual(result["report_text"], "【提成汇报】\n销售额: 1000.5\n提成比例: 0.1")
+
+        # /漫剧
+        result = process_slash_command("/漫剧", {"新增集数": 10, "总播放量": 100000, "完播率": 0.85})
+        self.assertEqual(result["export_data"], {"新增集数": 10, "总播放量": 100000, "完播率": 0.85, "comments": 0})
+        self.assertEqual(result["report_text"], "【漫剧汇报】\n新增集数: 10\n总播放量: 100000")
+
+        # /标书
+        result = process_slash_command("/标书", {"完成页数": 50, "审核进度": 0.5, "距离截标(天)": 3})
+        self.assertEqual(result["export_data"], {"完成页数": 50, "审核进度": 0.5, "距离截标(天)": 3, "comments": 0})
+        self.assertEqual(result["report_text"], "【标书汇报】\n完成页数: 50\n审核进度: 0.5")
+
+        # /状态
+        result = process_slash_command("/状态", {"今日工时": 8, "有效产出": 6, "疲劳度": 0.3})
+        self.assertEqual(result["export_data"], {"今日工时": 8, "有效产出": 6, "疲劳度": 0.3, "comments": 0})
+        self.assertEqual(result["report_text"], "【状态汇报】\n今日工时: 8\n有效产出: 6")
+
+    def test_default_fallback_missing_command(self):
+        # Missing or unknown command should fallback to "/状态"
+        result = process_slash_command("/未知指令", {"今日工时": 1, "有效产出": 2, "疲劳度": 3})
+        self.assertEqual(result["export_data"], {"今日工时": 1, "有效产出": 2, "疲劳度": 3, "comments": 0})
+        self.assertEqual(result["report_text"], "【状态汇报】\n今日工时: 1\n有效产出: 2")
 
     def test_dirty_data_self_healing(self):
-        # 2. Dirty data self-healing test case
-        data = {
-            'command': '/提成',
-            'value': float('nan'),
-            'count': None,
-            'metric1': 'NaN',
-            'metric2': ' None ',
-            'metric3': 'invalid_string',
-            'metric4': ''
+        # Test None, NaN, missing data, invalid strings, and lists
+        # Add list test to cover `return 0` fallback at the end of `sanitize_value`
+        list_data = {
+            "今日工时": [],
+            "有效产出": [1, 2],
+            "疲劳度": {}
         }
-        result = format_export(data)
-        self.assertEqual(result['value'], 0)
-        self.assertEqual(result['count'], 0)
-        self.assertEqual(result['metric1'], 0)
-        self.assertEqual(result['metric2'], 0)
-        self.assertEqual(result['metric3'], 0)
-        self.assertEqual(result['metric4'], 0)
-        self.assertEqual(result['comments'], 0)
+        result_list = process_slash_command("/状态", list_data)
+        self.assertEqual(result_list["export_data"], {"今日工时": 0, "有效产出": 0, "疲劳度": 0, "comments": 0})
 
-    def test_missing_parameter_fallback(self):
-        # 3. Missing parameter fallback
-        result = format_export()
-        self.assertEqual(result['command'], '')
-        self.assertEqual(result['value'], 0)
-        self.assertEqual(result['count'], 0)
-        self.assertEqual(result['comments'], 0)
-        expected_summary = "指令: 默认\n核心数据: 0\n数量: 0"
-        self.assertEqual(result['summary'], expected_summary)
+        # Test None, NaN, missing data, and invalid strings
+        dirty_data = {
+            "今日工时": None,
+            "有效产出": math.nan,
+            "疲劳度": "invalid_string"
+        }
+        result = process_slash_command("/状态", dirty_data)
+        self.assertEqual(result["export_data"], {"今日工时": 0, "有效产出": 0, "疲劳度": 0, "comments": 0})
+        self.assertEqual(result["report_text"], "【状态汇报】\n今日工时: 0\n有效产出: 0")
 
-        # Empty dict
-        result2 = format_export({})
-        self.assertEqual(result2['command'], '')
-        self.assertEqual(result2['value'], 0)
-        self.assertEqual(result2['count'], 0)
+        dirty_data2 = {
+            "今日工时": "NaN",
+            "有效产出": "None",
+            "疲劳度": ""
+        }
+        result2 = process_slash_command("/状态", dirty_data2)
+        self.assertEqual(result2["export_data"], {"今日工时": 0, "有效产出": 0, "疲劳度": 0, "comments": 0})
+
+        dirty_data3 = {
+            "今日工时": " 12.5 ",
+            "有效产出": 5
+        }
+        result3 = process_slash_command("/状态", dirty_data3)
+        self.assertEqual(result3["export_data"]["今日工时"], 12.5)
 
     def test_extreme_boundary_conditions(self):
-        # 4. Extreme boundary conditions (invalid data types for main structure)
-        # Passing integer instead of dict
-        result = format_export(123)
-        self.assertEqual(result['value'], 0)
-        self.assertEqual(result['comments'], 0)
+        # Empty dict
+        result = process_slash_command("/周报", {})
+        self.assertEqual(result["export_data"], {"完成任务数": 0, "待办任务数": 0, "风险项": 0, "comments": 0})
 
-        # Passing string instead of dict
-        result = format_export("test")
-        self.assertEqual(result['value'], 0)
+        # None as raw_data
+        result2 = process_slash_command("/提成", None)
+        self.assertEqual(result2["export_data"], {"销售额": 0, "提成比例": 0, "预计发放": 0, "comments": 0})
 
-        # Passing list instead of dict
-        result = format_export([1, 2, 3])
-        self.assertEqual(result['value'], 0)
+        # Invalid type as raw_data
+        result3 = process_slash_command("/漫剧", "unexpected_type")
+        self.assertEqual(result3["export_data"], {"新增集数": 0, "总播放量": 0, "完播率": 0, "comments": 0})
 
-    def test_invalid_command_type_and_unexpected_values(self):
-        # 5. Invalid command type in data, and unexpected data types inside values
-        data = {
-            'command': 123,  # command should be a string, falls back to empty
-            'value': [1, 2, 3],  # unhandled type, should be 0
-            'count': {'a': 1} # unhandled type, should be 0
-        }
-        result = format_export(data)
-        self.assertEqual(result['command'], '')
-        self.assertEqual(result['value'], 0)
-        self.assertEqual(result['count'], 0)
-
-    def test_clean_value_extra(self):
-        # test extra branch coverages for clean_value directly
-        self.assertEqual(clean_value(float('nan')), 0)
-        self.assertEqual(clean_value("NULL"), 0)
+    def test_comments_always_zero(self):
+        # Even if comments is provided in raw_data, it should be 0 in export_data
+        result = process_slash_command("/标书", {"完成页数": 1, "审核进度": 2, "距离截标(天)": 3, "comments": 999})
+        self.assertEqual(result["export_data"]["comments"], 0)
 
 if __name__ == '__main__':
     unittest.main() # pragma: no cover

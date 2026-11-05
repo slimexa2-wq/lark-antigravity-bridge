@@ -1,6 +1,6 @@
 import math
 
-def clean_value(val):
+def sanitize_value(val):
     if val is None:
         return 0
     if isinstance(val, (int, float)):
@@ -8,8 +8,8 @@ def clean_value(val):
             return 0
         return val
     if isinstance(val, str):
-        val = val.strip().lower()
-        if val in ('nan', 'none', 'null', ''):
+        val = val.strip()
+        if not val or val.lower() in ('nan', 'none'):
             return 0
         try:
             return float(val)
@@ -17,40 +17,41 @@ def clean_value(val):
             return 0
     return 0
 
-def format_export(data=None):
-    if data is None or not isinstance(data, dict):
-        data = {}
+def process_slash_command(command, raw_data):
+    if raw_data is None or not isinstance(raw_data, dict):
+        raw_data = {}
 
-    command = data.get('command', '')
-    if not isinstance(command, str):
-        command = ''
+    export_data = {}
+    report_lines = []
 
-    clean_data = {}
-    for k, v in data.items():
-        if k == 'command':
-            clean_data[k] = command
-        else:
-            clean_data[k] = clean_value(v)
+    # Map commands to titles and field extractions
+    # format: command: (title, [fields...])
+    routers = {
+        "/周报": ("【周报汇报】", ["完成任务数", "待办任务数", "风险项"]),
+        "/提成": ("【提成汇报】", ["销售额", "提成比例", "预计发放"]),
+        "/漫剧": ("【漫剧汇报】", ["新增集数", "总播放量", "完播率"]),
+        "/标书": ("【标书汇报】", ["完成页数", "审核进度", "距离截标(天)"]),
+        "/状态": ("【状态汇报】", ["今日工时", "有效产出", "疲劳度"])
+    }
 
-    # Always ensure command is present
-    clean_data['command'] = command
+    if command not in routers:
+        command = "/状态" # Default fallback
 
-    # Ensure comments is 0
-    clean_data['comments'] = 0
+    title, fields = routers[command]
 
-    # Fallbacks for specific expected fields if they are missing
-    if 'value' not in clean_data:
-        clean_data['value'] = 0
+    report_lines.append(title)
 
-    if 'count' not in clean_data:
-        clean_data['count'] = 0
+    for field in fields:
+        val = sanitize_value(raw_data.get(field, 0))
+        export_data[field] = val
+        report_lines.append(f"{field}: {val}")
 
-    # Generate 3-line minimalist summary
-    summary = (
-        f"指令: {command if command else '默认'}\n"
-        f"核心数据: {clean_data['value']}\n"
-        f"数量: {clean_data['count']}"
-    )
-    clean_data['summary'] = summary
+    export_data["comments"] = 0
+    report_lines.append(f"comments: {export_data['comments']}")
 
-    return clean_data
+    report_text = "\n".join(report_lines[:3]) # Only return first 3 lines for text as requested
+
+    return {
+        "report_text": report_text,
+        "export_data": export_data
+    }
